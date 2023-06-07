@@ -19,7 +19,7 @@ const UserSchema = Schema(
       required: true,
     },
     token: {
-      type: string,
+      type: String,
       required: false,
     },
     tokenExpiration: {
