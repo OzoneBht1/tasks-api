@@ -12,12 +12,13 @@ export const isAuth = (req, res, next) => {
     error.statusCode = 403;
     throw error;
   }
-  const data = jwt.decode(token);
-
-  // if (token.iat > new Date.now()) {
-  //   const error = new Error("Token expired. Please log in again");
-  //   error.statusCode = 403;
-  // }
-  req.user = data.userId;
-  next();
+  jwt.verify(token, process.env.SECRET, (error, payload) => {
+    if (error) {
+      const error = new Error("Unauthorized");
+      error.statusCode = 401;
+      throw error;
+    }
+    req.user = payload.userId;
+    next();
+  });
 };
