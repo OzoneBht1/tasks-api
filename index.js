@@ -8,8 +8,12 @@ const app = express();
 
 app.use(express.json());
 
-app.use(UserRoutes);
-app.use(TaskRoutes);
+app.use("/api/users", UserRoutes);
+app.use("/api/tasks", TaskRoutes);
+
+app.use("/api", () => {
+  console.log("Server");
+});
 
 app.use((err, req, res, next) => {
   const status = err.statusCode || 500;
