@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { body } from "express-validator";
-import { postUser, login } from "../controllers/users.js";
+import { postUser, login, refreshAccess } from "../controllers/users.js";
 import User from "../models/user.js";
 
 const router = Router();
@@ -47,5 +47,6 @@ router.post(
 );
 
 router.post("/login", login);
+router.post("/refresh", refreshAccess);
 
 export default router;
