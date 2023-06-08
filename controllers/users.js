@@ -3,6 +3,10 @@ import { compare, hash } from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
 import { selectFields } from "../utils/selectFields.js";
+import { generateToken } from "../utils/generateToken.js";
+
+const access = process.env.SECRET;
+const refresh = process.env.REFRESH;
 
 export const postUser = async (req, res, next) => {
   const errors = validationResult(req);
@@ -26,7 +30,7 @@ export const postUser = async (req, res, next) => {
   }
 };
 
-export const login = async (req, res) => {
+export const login = async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
@@ -34,15 +38,28 @@ export const login = async (req, res) => {
     if (user) {
       const isCorrectPassword = await compare(password, user.password);
       if (isCorrectPassword) {
-        const token = jwt.sign(
+        const accessToken = generateToken(
           {
             userId: user._id.toString(),
-            iat: Math.floor(Date.now() / 1000) - 30,
           },
-          process.env.SECRET
+          access,
+          {
+            expiresIn: "1h",
+          }
         );
-        user.save({ token: token, tokenExpiration: "1h" });
-        return res.status(200).json({ token: token });
+
+        const refreshToken = generateToken(
+          {
+            userId: user._id.toString(),
+          },
+          refresh,
+          {
+            expiresIn: "7d",
+          }
+        );
+        return res
+          .status(200)
+          .json({ access: accessToken, refresh: refreshToken });
       }
       const error = new Error("Invalid Email or Password");
       error.statusCode = 401;
@@ -54,4 +71,22 @@ export const login = async (req, res) => {
   } catch (err) {
     next(err);
   }
+};
+
+export const refreshAccess = (req, res, next) => {
+  const { token } = req.body;
+  if (!token) {
+    const error = new Error("Invalid fields");
+    error.statusCode = 400;
+    throw error;
+  }
+  jwt.verify(token, refresh, (error, payload) => {
+    if (error) {
+      throw new Error("Balls");
+    }
+    const accessToken = generateToken({ userId: payload.userId }, access, {
+      expiresIn: "1h",
+    });
+    return res.status(200).json({ access: accessToken });
+  });
 };
