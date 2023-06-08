@@ -5,11 +5,14 @@ import { isAuth } from "../utils/isAuth.js";
 
 const router = Router();
 
-router.get("/", getTasks);
+router.get("/tasks", isAuth, getTasks);
 
 router.post(
   "/task",
-  [check("title", "Title is required").isAlphanumeric().notEmpty()],
+  [
+    check("title", "Title is required").isAlphanumeric().notEmpty(),
+    check("description", "Description is required").notEmpty(),
+  ],
   isAuth,
   postTask
 );

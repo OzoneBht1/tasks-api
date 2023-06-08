@@ -7,7 +7,10 @@ const TaskSchema = Schema(
       required: true,
     },
 
-    description: string,
+    description: {
+      type: String,
+      required: true,
+    },
     completed: {
       type: Boolean,
       default: false,
@@ -15,7 +18,7 @@ const TaskSchema = Schema(
     userId: {
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: false,
+      required: true,
     },
   },
   {
