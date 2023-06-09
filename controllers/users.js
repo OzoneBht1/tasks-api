@@ -164,3 +164,23 @@ export const validateToken = async (req, res, next) => {
     next(error);
   }
 };
+
+export const postChangePassword = async (req, res, next) => {
+  const { password } = req.body;
+  const { token } = req.params;
+  try {
+    const user = await User.findOne({ token: token });
+    if (!user) {
+      const error = new Error("Invalid token");
+      error.statusCode = 400;
+      next(error);
+    }
+    user.password = password;
+    user.save();
+    return res.status(200).json({ message: "Valid Token" });
+  } catch (err) {
+    const error = new Error(err);
+    error.statusCode = 403;
+    next(error);
+  }
+};

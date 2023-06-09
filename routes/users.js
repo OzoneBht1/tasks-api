@@ -6,6 +6,7 @@ import {
   refreshAccess,
   postResetPassword,
   validateToken,
+  postChangePassword,
 } from "../controllers/users.js";
 import User from "../models/user.js";
 
@@ -64,5 +65,23 @@ router.post(
 );
 
 router.get("/validate/:token", validateToken);
+
+router.get(
+  "/reset/:token",
+  body("password")
+    .trim()
+    .notEmpty()
+    .withMessage("Password is required")
+    .isLength({ min: 5 })
+    .withMessage("The password must atleast be of length 5"),
+  body("confirmPassword").custom((val, { req }) => {
+    if (val !== req.body.password) {
+      throw new Error("The two passwords do not match");
+    }
+    return true;
+  }),
+
+  postChangePassword
+);
 
 export default router;
