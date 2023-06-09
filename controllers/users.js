@@ -4,6 +4,17 @@ import jwt from "jsonwebtoken";
 import User from "../models/user.js";
 import { selectFields } from "../utils/selectFields.js";
 import { generateToken } from "../utils/generateToken.js";
+import nodemailer from "nodemailer";
+import sendGridTransport from "nodemailer-sendgrid-transport";
+import crypto from "crypto";
+
+const transporter = nodemailer.createTransport(
+  sendGridTransport({
+    auth: {
+      api_key: process.env.NODEMAILER_API,
+    },
+  })
+);
 
 const access = process.env.SECRET;
 const refresh = process.env.REFRESH;
@@ -82,11 +93,46 @@ export const refreshAccess = (req, res, next) => {
   }
   jwt.verify(token, refresh, (error, payload) => {
     if (error) {
-      throw new Error("Balls");
+      throw new Error("Refresh Token is Incorrect or expired");
     }
     const accessToken = generateToken({ userId: payload.userId }, access, {
       expiresIn: "1h",
     });
     return res.status(200).json({ access: accessToken });
   });
+};
+
+export const postResetPassword = async (req, res, next) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email: email });
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      next(error);
+    }
+
+    crypto.randomBytes(32, async (err, buffer) => {
+      const token = buffer.toString("hex");
+      user.token = token;
+      const expirationDate = new Date();
+      expirationDate.setHours(expirationDate.getHours() + 1);
+      user.tokenExpiration = expirationDate;
+      await user.save();
+      transporter.sendMail({
+        to: email,
+        from: "ozonebhattarai@gmail.com",
+        subject: "Reset Email",
+        html: `
+<p>Click the following link to reset your password:<p>
+ <h3><a href="http://localhost:3000/reset/${token}">Link</a></h3>
+`,
+      });
+      res
+        .status(200)
+        .json({ message: "An Email has been sent with further instructions" });
+    });
+  } catch (err) {
+    next(err);
+  }
 };

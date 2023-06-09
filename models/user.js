@@ -21,10 +21,12 @@ const UserSchema = Schema(
     token: {
       type: String,
       required: false,
+      default: null,
     },
     tokenExpiration: {
       type: Date,
       required: false,
+      default: null,
     },
   },
   {
