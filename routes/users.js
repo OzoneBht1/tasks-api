@@ -5,6 +5,7 @@ import {
   login,
   refreshAccess,
   postResetPassword,
+  validateToken,
 } from "../controllers/users.js";
 import User from "../models/user.js";
 
@@ -53,6 +54,15 @@ router.post(
 
 router.post("/login", login);
 router.post("/refresh", refreshAccess);
-router.post("/reset-password", postResetPassword);
+router.post(
+  "/reset-password",
+  body("email")
+    .isEmail()
+    .withMessage("Please enter a valid email")
+    .normalizeEmail(),
+  postResetPassword
+);
+
+router.get("/validate/:token", validateToken);
 
 export default router;

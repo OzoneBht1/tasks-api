@@ -4,17 +4,8 @@ import jwt from "jsonwebtoken";
 import User from "../models/user.js";
 import { selectFields } from "../utils/selectFields.js";
 import { generateToken } from "../utils/generateToken.js";
-import nodemailer from "nodemailer";
-import sendGridTransport from "nodemailer-sendgrid-transport";
 import crypto from "crypto";
-
-const transporter = nodemailer.createTransport(
-  sendGridTransport({
-    auth: {
-      api_key: process.env.NODEMAILER_API,
-    },
-  })
-);
+import { sendMail } from "../utils/mailer.js";
 
 const access = process.env.SECRET;
 const refresh = process.env.REFRESH;
@@ -103,6 +94,14 @@ export const refreshAccess = (req, res, next) => {
 };
 
 export const postResetPassword = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new Error("Validation Error");
+    error.statusCode = 403;
+    error.data = errors.array();
+    next(error);
+  }
+
   const { email } = req.body;
   try {
     const user = await User.findOne({ email: email });
@@ -113,26 +112,55 @@ export const postResetPassword = async (req, res, next) => {
     }
 
     crypto.randomBytes(32, async (err, buffer) => {
+      if (err) {
+        next(err);
+      }
       const token = buffer.toString("hex");
       user.token = token;
       const expirationDate = new Date();
       expirationDate.setHours(expirationDate.getHours() + 1);
       user.tokenExpiration = expirationDate;
-      await user.save();
-      transporter.sendMail({
-        to: email,
-        from: "ozonebhattarai@gmail.com",
-        subject: "Reset Email",
-        html: `
+
+      sendMail(
+        email,
+        "Reset password",
+        `
 <p>Click the following link to reset your password:<p>
  <h3><a href="http://localhost:3000/reset/${token}">Link</a></h3>
-`,
-      });
+`
+      ),
+        await user.save();
       res
         .status(200)
         .json({ message: "An Email has been sent with further instructions" });
     });
   } catch (err) {
     next(err);
+  }
+};
+
+export const validateToken = async (req, res, next) => {
+  const { token } = req.params;
+  try {
+    const user = await User.findOne({ token: token });
+    if (!user) {
+      const error = new Error("Invalid token");
+      error.statusCode = 400;
+      next(error);
+    }
+    const expiry = user.tokenExpiration;
+    const current = new Date();
+
+    if (expiry < current) {
+      const error = new Error("Token is expired");
+      error.status = 422;
+      throw error;
+    }
+
+    return res.status(200).json({ message: "Valid Token" });
+  } catch (err) {
+    const error = new Error(err);
+    error.statusCode = 403;
+    next(error);
   }
 };
