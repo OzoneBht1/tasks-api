@@ -18,6 +18,14 @@ const UserSchema = Schema(
       min: 6,
       required: true,
     },
+    verified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationToken: {
+      type: String,
+    },
+
     token: {
       type: String,
       required: false,

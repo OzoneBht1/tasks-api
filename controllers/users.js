@@ -7,6 +7,7 @@ import { generateToken } from "../utils/generateToken.js";
 import crypto from "crypto";
 import { sendMail } from "../utils/mailer.js";
 
+import { generateEmailToken } from "../utils/generateEmailToken.js";
 const access = process.env.SECRET;
 const refresh = process.env.REFRESH;
 
@@ -24,9 +25,50 @@ export const postUser = async (req, res, next) => {
 
   try {
     const hashedPassword = await hash(password, 10);
-    const user = new User({ email, name, password: hashedPassword });
-    await user.save();
+    const token = generateEmailToken();
+    const user = new User({
+      email,
+      name,
+      password: hashedPassword,
+      emailVerificationToken: token,
+    });
+
+    sendMail(
+      email,
+      "Verify Password",
+      `
+<p> Please enter the following code to verify : ${token}
+`
+    ),
+      await user.save();
     return res.status(201).json({ message: "User created successfully" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const postVerifyEmail = async (req, res, next) => {
+  const { email, verificationCode } = req.body;
+
+  try {
+    const user = await User.findOne({ email: email });
+
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      return next(error);
+    }
+
+    if (user.emailVerificationToken !== verificationCode) {
+      const error = new Error("Invalid verification code");
+      error.statusCode = 400;
+      return next(error);
+    }
+
+    user.verified = true;
+    await user.updateOne({ $unset: { emailVerificationToken: 1 } });
+
+    return res.status(200).json({ message: "Email verified successfully" });
   } catch (err) {
     next(err);
   }
@@ -38,6 +80,11 @@ export const login = async (req, res, next) => {
   try {
     const user = await User.findOne({ email: email });
     if (user) {
+      if (!user.verified) {
+        const error = new Error("Unverified user");
+        error.status = 403;
+        next(error);
+      }
       const isCorrectPassword = await compare(password, user.password);
       if (isCorrectPassword) {
         const accessToken = generateToken(
@@ -184,7 +231,6 @@ export const postChangePassword = async (req, res, next) => {
       error.statusCode = 400;
       next(error);
     }
-    console.log("Im here");
     const hashedPassword = await hash(password, 10);
     user.password = hashedPassword;
     await user.save();
@@ -193,5 +239,51 @@ export const postChangePassword = async (req, res, next) => {
     const error = new Error(err);
     error.statusCode = 403;
     next(error);
+  }
+};
+
+export const postEmailVerification = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const error = new Error("Validation Error");
+    error.statusCode = 403;
+    error.data = errors.array();
+    next(error);
+  }
+
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email: email });
+    if (!user) {
+      const error = new Error("User not found");
+      error.statusCode = 404;
+      next(error);
+    }
+
+    crypto.randomBytes(32, async (err, buffer) => {
+      if (err) {
+        next(err);
+      }
+      const token = buffer.toString("hex");
+      user.token = token;
+      const expirationDate = new Date();
+      expirationDate.setHours(expirationDate.getHours() + 1);
+      user.tokenExpiration = expirationDate;
+
+      sendMail(
+        email,
+        "Reset password",
+        `
+<p>Click the following link to reset your password:<p>
+ <h3><a href="http://localhost:3000/reset/${token}">Link</a></h3>
+`
+      ),
+        await user.save();
+      res
+        .status(200)
+        .json({ message: "An Email has been sent with further instructions" });
+    });
+  } catch (err) {
+    next(err);
   }
 };
