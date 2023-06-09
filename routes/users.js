@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { body } from "express-validator";
+import { body, param } from "express-validator";
 import {
   postUser,
   login,
@@ -66,8 +66,9 @@ router.post(
 
 router.get("/validate/:token", validateToken);
 
-router.get(
-  "/reset/:token",
+router.post(
+  "/balls/:token",
+  param("token").notEmpty().withMessage("Token is required"),
   body("password")
     .trim()
     .notEmpty()

@@ -166,6 +166,15 @@ export const validateToken = async (req, res, next) => {
 };
 
 export const postChangePassword = async (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    console.log(errors);
+    const error = new Error("Validation Failed");
+    error.statusCode = 400;
+    error.data = selectFields(errors.array());
+    next(error);
+  }
+
   const { password } = req.body;
   const { token } = req.params;
   try {
@@ -175,9 +184,11 @@ export const postChangePassword = async (req, res, next) => {
       error.statusCode = 400;
       next(error);
     }
-    user.password = password;
-    user.save();
-    return res.status(200).json({ message: "Valid Token" });
+    console.log("Im here");
+    const hashedPassword = await hash(password, 10);
+    user.password = hashedPassword;
+    await user.save();
+    return res.status(200).json({ message: "Password Updated Successfully" });
   } catch (err) {
     const error = new Error(err);
     error.statusCode = 403;
