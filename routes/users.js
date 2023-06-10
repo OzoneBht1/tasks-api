@@ -7,6 +7,7 @@ import {
   postResetPassword,
   validateToken,
   postChangePassword,
+  postVerifyEmail,
 } from "../controllers/users.js";
 import User from "../models/user.js";
 
@@ -84,5 +85,7 @@ router.post(
 
   postChangePassword
 );
+
+router.get("/verify-email", postVerifyEmail);
 
 export default router;

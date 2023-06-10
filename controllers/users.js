@@ -66,7 +66,10 @@ export const postVerifyEmail = async (req, res, next) => {
     }
 
     user.verified = true;
-    await user.updateOne({ $unset: { emailVerificationToken: 1 } });
+    await user.updateOne({
+      $set: { verified: true },
+      $unset: { emailVerificationToken: 1 },
+    });
 
     return res.status(200).json({ message: "Email verified successfully" });
   } catch (err) {
