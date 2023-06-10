@@ -68,7 +68,7 @@ router.post(
 router.get("/validate/:token", validateToken);
 
 router.post(
-  "/balls/:token",
+  "/update-password/:token",
   param("token").notEmpty().withMessage("Token is required"),
   body("password")
     .trim()

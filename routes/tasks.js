@@ -1,6 +1,11 @@
 import { Router } from "express";
 import { body } from "express-validator";
-import { getTasks, postTask, updateTask } from "../controllers/tasks.js";
+import {
+  deleteTask,
+  getTasks,
+  postTask,
+  updateTask,
+} from "../controllers/tasks.js";
 import { isAuth } from "../utils/isAuth.js";
 
 const router = Router();
@@ -34,5 +39,7 @@ router.put(
   isAuth,
   updateTask
 );
+
+router.delete("/task/:id", isAuth, deleteTask);
 
 export default router;
