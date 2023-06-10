@@ -53,6 +53,12 @@ export const updateTask = async (req, res, next) => {
       next(err);
     }
 
+    if (task.userId !== req.user) {
+      const error = new Error("No Task found for the given id");
+      error.statusCode = 403;
+      next(err);
+    }
+
     const { title, description } = req.body;
 
     if (title) {
@@ -62,6 +68,38 @@ export const updateTask = async (req, res, next) => {
       task.description = description;
     }
     await task.save();
+    res.status(201).json({ message: "Updated successfully" });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteTask = async (req, res, next) => {
+  const { id } = req.params;
+  if (!id) {
+    const error = new Error("Id is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  try {
+    const task = await Task.findById(id);
+    if (!task) {
+      const error = new Error("No Task found for the given id");
+      error.statusCode = 403;
+      next(err);
+    }
+
+    if (task.userId !== req.user) {
+      const error = new Error(
+        "You do not have permission to perform this action"
+      );
+      error.statusCode = 401;
+      next(err);
+    }
+
+    await Task.findOneAndDelete(id);
+
     res.status(201).json({ message: "Updated successfully" });
   } catch (err) {
     next(err);
